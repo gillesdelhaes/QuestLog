@@ -29,7 +29,7 @@ app.include_router(badges_router)
 app.include_router(stats_router)
 
 # Serve frontend — must come after API routes
-app.mount("/", StaticFiles(directory="backend/static", html=True), name="static")
+app.mount("/", StaticFiles(directory="frontend", html=True), name="static")
 
 
 @app.on_event("startup")
