@@ -1,0 +1,13 @@
+services:
+  questlog:
+    build: .
+    ports:
+      - "${PORT:-8420}:8420"
+    volumes:
+      - questlog_data:/data
+    env_file:
+      - .env
+    restart: unless-stopped
+
+volumes:
+  questlog_data:

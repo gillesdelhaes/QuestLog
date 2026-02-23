@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0f0f1a">
+  <meta name="description" content="QuestLog — Gamified personal goal tracker">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="QuestLog">
+  <title>QuestLog</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/pixel.css">
+  <link rel="stylesheet" href="/css/components.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════ LOGIN VIEW -->
+<div id="login-view" class="hidden" style="background:var(--bg);min-height:100vh">
+  <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:2rem 1rem">
+    <div class="pixel-panel login-panel">
+      <span class="pixel-corner-bl"></span>
+      <span class="pixel-corner-br"></span>
+
+      <div class="login-logo">
+        <span class="logo-big">⚔️</span>
+        <h1>QuestLog</h1>
+        <p class="tagline">Turn your goals into an epic adventure</p>
+      </div>
+
+      <div class="pixel-divider"></div>
+
+      <div class="login-tabs">
+        <button class="login-tab active" id="tab-login">Login</button>
+        <button class="login-tab" id="tab-register">Register</button>
+      </div>
+
+      <!-- Login form -->
+      <form id="form-login" autocomplete="on">
+        <div class="form-group">
+          <label for="login-username">Username</label>
+          <input id="login-username" name="username" type="text" autocomplete="username" required placeholder="Your username">
+        </div>
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input id="login-password" name="password" type="password" autocomplete="current-password" required placeholder="••••••••">
+        </div>
+        <p id="login-error" class="form-error"></p>
+        <button type="submit" class="btn btn-primary btn-full btn-lg" style="margin-top:0.5rem">Enter the Adventure</button>
+      </form>
+
+      <!-- Register form -->
+      <form id="form-register" class="hidden" autocomplete="on">
+        <div class="form-group">
+          <label for="reg-username">Choose a Username</label>
+          <input id="reg-username" name="username" type="text" autocomplete="username" required placeholder="At least 2 characters">
+        </div>
+        <div class="form-group">
+          <label for="reg-password">Choose a Password</label>
+          <input id="reg-password" name="password" type="password" autocomplete="new-password" required placeholder="At least 6 characters">
+        </div>
+        <p id="register-error" class="form-error"></p>
+        <button type="submit" class="btn btn-primary btn-full btn-lg" style="margin-top:0.5rem">Begin Your Journey</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════ APP VIEW -->
+<div id="app-view" class="hidden">
+
+  <!-- Top Header -->
+  <header class="app-header">
+    <div class="header-logo">
+      <span class="logo-icon">⚔️</span>
+      <span class="logo-text">QuestLog</span>
+    </div>
+
+    <div class="header-combo" id="combo-display">
+      <span class="combo-zero">No active combos</span>
+    </div>
+
+    <div class="header-actions">
+      <span class="header-username" id="header-username"></span>
+      <button class="btn btn-ghost btn-sm" id="btn-logout">Logout</button>
+    </div>
+  </header>
+
+  <!-- Desktop Nav Tabs -->
+  <nav class="nav-tabs">
+    <button class="nav-tab active" data-tab="dashboard">⚔️ Active Quests</button>
+    <button class="nav-tab" data-tab="completed">🏆 Completed</button>
+    <button class="nav-tab" data-tab="badges">🏅 Badges</button>
+    <button class="nav-tab" data-tab="profile">👤 Profile</button>
+  </nav>
+
+  <!-- Main content -->
+  <main class="main-content">
+
+    <!-- Dashboard view -->
+    <div id="dashboard-view" class="view active">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:0.75rem">
+        <h2 style="font-family:var(--font-pixel);font-size:0.65rem;color:var(--gold)">Active Quests</h2>
+        <button class="btn btn-primary btn-sm" id="btn-new-quest">+ New Quest</button>
+      </div>
+      <div class="quest-grid" id="active-quest-grid">
+        <div class="empty-state" style="grid-column:1/-1">
+          <div class="loader"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Completed view -->
+    <div id="completed-view" class="view">
+      <div style="margin-bottom:1.25rem">
+        <h2 style="font-family:var(--font-pixel);font-size:0.65rem;color:var(--gold)">Completed & Failed</h2>
+      </div>
+      <div class="quest-grid" id="completed-quest-grid">
+        <div class="empty-state" style="grid-column:1/-1"><div class="loader"></div></div>
+      </div>
+    </div>
+
+    <!-- Badges view -->
+    <div id="badges-view" class="view"></div>
+
+    <!-- Profile view -->
+    <div id="profile-view" class="view"></div>
+
+  </main>
+
+  <!-- Mobile bottom nav -->
+  <nav class="mobile-nav">
+    <button class="nav-tab active" data-tab="dashboard">
+      <span class="tab-icon">⚔️</span>Quests
+    </button>
+    <button class="nav-tab" data-tab="completed">
+      <span class="tab-icon">🏆</span>Done
+    </button>
+    <button class="nav-tab" data-tab="badges">
+      <span class="tab-icon">🏅</span>Badges
+    </button>
+    <button class="nav-tab" data-tab="profile">
+      <span class="tab-icon">👤</span>Profile
+    </button>
+  </nav>
+
+</div><!-- /app-view -->
+
+<!-- ════════════════════════════════════════════════════════ TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<!-- ══════════════════════════════════════════════════════════════ MODALS -->
+
+<!-- New Quest Modal -->
+<div id="new-quest-modal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header">
+      <h2>New Quest</h2>
+      <button class="modal-close" id="btn-close-quest-form">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Step indicators -->
+      <div class="wizard-steps">
+        <div class="wizard-step active">Type</div>
+        <div class="wizard-step">Details</div>
+        <div class="wizard-step">Config</div>
+        <div class="wizard-step">Rules</div>
+      </div>
+
+      <!-- Pane 1: Quest type -->
+      <div class="wizard-pane active">
+        <p class="text-dim" style="font-size:0.85rem;margin-bottom:1rem">Choose the type of quest you want to track.</p>
+        <div class="type-cards" id="type-cards-container"></div>
+      </div>
+
+      <!-- Pane 2: Basic fields -->
+      <div class="wizard-pane">
+        <div class="form-group">
+          <label>Quest Title</label>
+          <input type="text" id="quest-title" maxlength="80" placeholder="e.g. No fast food, Drink 2L of water…" required>
+        </div>
+
+        <div class="form-group">
+          <label>Icon Emoji</label>
+          <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem">
+            <div class="emoji-preview" id="quest-emoji-preview">🔥</div>
+            <span class="text-dim" style="font-size:0.8rem">Tap an emoji below to select</span>
+          </div>
+          <div class="emoji-grid" id="emoji-picker-grid"></div>
+        </div>
+
+        <div class="form-group">
+          <label>Description <span class="text-dim">(optional)</span></label>
+          <textarea id="quest-description" rows="2" maxlength="300" placeholder="What is this quest about?"></textarea>
+        </div>
+      </div>
+
+      <!-- Pane 3: Type config -->
+      <div class="wizard-pane">
+        <div id="type-config-container"></div>
+      </div>
+
+      <!-- Pane 4: Failure mode -->
+      <div class="wizard-pane">
+        <p class="text-dim" style="font-size:0.85rem;margin-bottom:1rem">How should the quest handle a missed day?</p>
+        <div id="failure-config-container"></div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="btn-wizard-prev">← Back</button>
+      <button class="btn btn-primary" id="btn-wizard-next">Next →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Quest Detail Modal -->
+<div id="quest-detail-modal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header">
+      <h2>Quest Details</h2>
+      <button class="modal-close" id="btn-close-detail">✕</button>
+    </div>
+    <div class="modal-body" id="detail-body">
+      <div class="loader"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Counter Log Modal -->
+<div id="counter-modal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-header">
+      <h2 id="counter-modal-title">Log Today's Value</h2>
+      <button class="modal-close" data-close-modal="counter-modal">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="counter-form">
+        <div class="form-group">
+          <label>Value</label>
+          <input type="number" id="counter-value" step="any" min="0" required autofocus>
+          <div class="form-hint" id="counter-target-hint"></div>
+        </div>
+        <div class="form-group">
+          <label>Notes <span class="text-dim">(optional)</span></label>
+          <input type="text" id="counter-notes" maxlength="200">
+        </div>
+        <div class="modal-footer" style="padding:0;border:none;margin-top:0.5rem">
+          <button type="button" class="btn btn-ghost" data-close-modal="counter-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Log</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Numeric Update Modal (Boss/Milestone) -->
+<div id="numeric-modal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-header">
+      <h2>Update Progress</h2>
+      <button class="modal-close" data-close-modal="numeric-modal">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="numeric-form">
+        <div class="form-group">
+          <label>Current Value</label>
+          <input type="number" id="numeric-value" step="any" min="0" required>
+          <div class="form-hint" id="numeric-unit-hint"></div>
+        </div>
+        <div class="modal-footer" style="padding:0;border:none;margin-top:0.5rem">
+          <button type="button" class="btn btn-ghost" data-close-modal="numeric-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Update</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Quest Modal -->
+<div id="edit-quest-modal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <h2>Edit Quest</h2>
+      <button class="modal-close" id="btn-close-edit">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="edit-quest-form">
+        <div class="form-group">
+          <label>Title</label>
+          <input type="text" id="edit-title" required maxlength="80">
+        </div>
+        <div class="form-group">
+          <label>Emoji</label>
+          <input type="text" id="edit-emoji" maxlength="4" style="max-width:80px">
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="edit-desc" rows="2" maxlength="300"></textarea>
+        </div>
+        <div class="modal-footer" style="padding:0;border:none;margin-top:0.5rem">
+          <button type="button" class="btn btn-ghost" id="btn-close-edit2">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Delete Modal -->
+<div id="confirm-modal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-header">
+      <h2 id="confirm-title">Are you sure?</h2>
+      <button class="modal-close" id="btn-close-confirm">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="confirm-dialog">
+        <p id="confirm-msg"></p>
+        <div style="display:flex;gap:0.75rem;justify-content:center">
+          <button class="btn btn-ghost" id="btn-confirm-no">Cancel</button>
+          <button class="btn btn-danger" id="btn-confirm-yes">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="/js/app.js"></script>
+<script>
+  // Register service worker for PWA
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+  }
+
+  // Close modals with data-close-modal attribute
+  document.addEventListener('click', (e) => {
+    const target = e.target.closest('[data-close-modal]');
+    if (target) {
+      const modalId = target.dataset.closeModal;
+      document.getElementById(modalId)?.classList.add('hidden');
+    }
+  });
+
+  // Close edit quest with second cancel button
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('btn-close-edit2')?.addEventListener('click', () => {
+      document.getElementById('edit-quest-modal').classList.add('hidden');
+    });
+    document.getElementById('btn-close-confirm')?.addEventListener('click', () => {
+      document.getElementById('confirm-modal').classList.add('hidden');
+    });
+  });
+</script>
+</body>
+</html>
