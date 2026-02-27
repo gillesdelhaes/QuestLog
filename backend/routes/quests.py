@@ -11,6 +11,7 @@ from ..models import (
     CheckInCreate,
     CheckInResponse,
     FailureMode,
+    GoalDirection,
     NumericUpdate,
     Quest,
     QuestCreate,
@@ -43,7 +44,9 @@ def _check_boss_deadline(quest: Quest, session: Session) -> Quest:
         and quest.deadline
         and date.today() > quest.deadline
     ):
-        if (quest.numeric_current or 0) >= (quest.numeric_target or 0):
+        cur, tgt = (quest.numeric_current or 0), (quest.numeric_target or 0)
+        reached = cur <= tgt if quest.goal_direction == GoalDirection.below else cur >= tgt
+        if reached:
             quest.status = QuestStatus.completed
             quest.completed_at = datetime.utcnow()
         else:
@@ -127,6 +130,8 @@ def create_quest(
         unit=body.unit,
         numeric_target=body.numeric_target,
         numeric_current=body.numeric_current or 0.0,
+        numeric_start=body.numeric_current or 0.0,
+        goal_direction=body.goal_direction or GoalDirection.above,
         deadline=body.deadline,
         weekly_target=body.weekly_target,
     )
@@ -296,7 +301,9 @@ def update_numeric(
     session.commit()
 
     # Auto-complete milestone when target reached
-    if quest.type == QuestType.milestone and (quest.numeric_current or 0) >= (quest.numeric_target or 0):
+    cur2, tgt2 = (quest.numeric_current or 0), (quest.numeric_target or 0)
+    reached2 = cur2 <= tgt2 if quest.goal_direction == GoalDirection.below else cur2 >= tgt2
+    if quest.type == QuestType.milestone and reached2:
         quest.status = QuestStatus.completed
         quest.completed_at = datetime.utcnow()
         session.add(quest)

@@ -78,9 +78,19 @@ function buildStats(q) {
   }
 
   if (['boss_battle', 'milestone'].includes(q.type)) {
-    const pct = q.numeric_target ? Math.min(100, Math.round(((q.numeric_current || 0) / q.numeric_target) * 100)) : 0;
+    let pct = 0;
+    if (q.numeric_target) {
+      if (q.goal_direction === 'below') {
+        const start = q.numeric_start ?? q.numeric_current;
+        const range = start - q.numeric_target;
+        if (range > 0) pct = Math.min(100, Math.max(0, Math.round((start - (q.numeric_current || 0)) / range * 100)));
+      } else {
+        pct = Math.min(100, Math.round((q.numeric_current || 0) / q.numeric_target * 100));
+      }
+    }
     const unit = q.unit || '';
-    parts.push(statBox('📈', 'Progress', `${q.numeric_current || 0} / ${q.numeric_target} ${unit}`));
+    const dir  = q.goal_direction === 'below' ? '📉' : '📈';
+    parts.push(statBox(dir, 'Progress', `${q.numeric_current || 0} → ${q.numeric_target} ${unit}`));
     parts.push(statBox('🎯', 'Completion', `${pct}%`));
     if (q.deadline) parts.push(statBox('📅', 'Deadline', q.deadline));
   }

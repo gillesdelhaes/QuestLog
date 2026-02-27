@@ -16,11 +16,12 @@ let state = {
   type: null,
   emoji: EMOJIS[0],
   failureMode: null,
+  goalDirection: 'above',
 };
 
 // ── Open / close ───────────────────────────────────────────────────────────
 export function openNewQuestForm() {
-  state = { step: 1, type: null, emoji: EMOJIS[0], failureMode: null };
+  state = { step: 1, type: null, emoji: EMOJIS[0], failureMode: null, goalDirection: 'above' };
   renderWizard();
   document.getElementById('new-quest-modal').classList.remove('hidden');
 }
@@ -108,6 +109,30 @@ function renderEmojiPicker() {
   });
 }
 
+// ── Direction toggle (shared by boss_battle & milestone) ───────────────────
+function directionToggleHTML() {
+  return `
+    <div class="form-group">
+      <label>Goal Direction</label>
+      <div style="display:flex;gap:0.5rem">
+        <button type="button" class="btn btn-sm ${state.goalDirection === 'above' ? 'btn-success' : 'btn-ghost'}" id="dir-above">📈 Reach above</button>
+        <button type="button" class="btn btn-sm ${state.goalDirection === 'below' ? 'btn-primary' : 'btn-ghost'}" id="dir-below">📉 Get below</button>
+      </div>
+      <div class="form-hint" id="dir-hint">${state.goalDirection === 'above' ? 'e.g. run 100 km, read 10 books' : 'e.g. lose weight to 80 kg, reduce debt'}</div>
+    </div>`;
+}
+
+function wireDirectionToggle(el) {
+  el.querySelector('#dir-above')?.addEventListener('click', () => {
+    state.goalDirection = 'above';
+    renderTypeConfig();
+  });
+  el.querySelector('#dir-below')?.addEventListener('click', () => {
+    state.goalDirection = 'below';
+    renderTypeConfig();
+  });
+}
+
 // ── Step 3: Type-specific config ───────────────────────────────────────────
 function renderTypeConfig() {
   const el = document.getElementById('type-config-container');
@@ -133,26 +158,28 @@ function renderTypeConfig() {
 
     case 'boss_battle':
       el.innerHTML = `
+        ${directionToggleHTML()}
         <div class="form-row">
           <div class="form-group">
-            <label>Target Value</label>
-            <input type="number" id="boss-target-input" min="0" step="any" placeholder="e.g. 10" required>
+            <label>${state.goalDirection === 'below' ? 'Goal Value' : 'Target Value'}</label>
+            <input type="number" id="boss-target-input" step="any" placeholder="${state.goalDirection === 'below' ? 'e.g. 80' : 'e.g. 10'}" required>
           </div>
           <div class="form-group">
             <label>Unit</label>
-            <input type="text" id="boss-unit-input" placeholder="e.g. books">
+            <input type="text" id="boss-unit-input" placeholder="e.g. kg">
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label>Current Value</label>
-            <input type="number" id="boss-current-input" min="0" step="any" placeholder="0" value="0">
+            <label>${state.goalDirection === 'below' ? 'Starting Value' : 'Current Value'}</label>
+            <input type="number" id="boss-current-input" step="any" placeholder="${state.goalDirection === 'below' ? 'e.g. 100' : '0'}" value="0">
           </div>
           <div class="form-group">
             <label>Deadline</label>
             <input type="date" id="boss-deadline-input" required>
           </div>
         </div>`;
+      wireDirectionToggle(el);
       // Set min date to tomorrow
       setTimeout(() => {
         const d = document.getElementById('boss-deadline-input');
@@ -166,20 +193,22 @@ function renderTypeConfig() {
 
     case 'milestone':
       el.innerHTML = `
+        ${directionToggleHTML()}
         <div class="form-row">
           <div class="form-group">
-            <label>Target Value</label>
-            <input type="number" id="milestone-target-input" min="0" step="any" placeholder="e.g. 500" required>
+            <label>${state.goalDirection === 'below' ? 'Goal Value' : 'Target Value'}</label>
+            <input type="number" id="milestone-target-input" step="any" placeholder="${state.goalDirection === 'below' ? 'e.g. 80' : 'e.g. 500'}" required>
           </div>
           <div class="form-group">
             <label>Unit</label>
-            <input type="text" id="milestone-unit-input" placeholder="e.g. km">
+            <input type="text" id="milestone-unit-input" placeholder="e.g. kg">
           </div>
         </div>
         <div class="form-group">
-          <label>Starting Value (optional)</label>
-          <input type="number" id="milestone-current-input" min="0" step="any" placeholder="0" value="0">
+          <label>${state.goalDirection === 'below' ? 'Starting Value' : 'Starting Value (optional)'}</label>
+          <input type="number" id="milestone-current-input" step="any" placeholder="0" value="0">
         </div>`;
+      wireDirectionToggle(el);
       break;
 
     case 'weekly_quota':
@@ -304,6 +333,7 @@ async function submitQuest() {
       data.unit            = document.getElementById('boss-unit-input')?.value?.trim() || null;
       data.numeric_current = parseFloat(document.getElementById('boss-current-input')?.value) || 0;
       data.deadline        = document.getElementById('boss-deadline-input')?.value || null;
+      data.goal_direction  = state.goalDirection;
       if (!data.numeric_target) { showToast('Enter a target value', 'error'); return; }
       if (!data.deadline) { showToast('Enter a deadline', 'error'); return; }
       break;
@@ -312,6 +342,7 @@ async function submitQuest() {
       data.numeric_target  = parseFloat(document.getElementById('milestone-target-input')?.value) || null;
       data.unit            = document.getElementById('milestone-unit-input')?.value?.trim() || null;
       data.numeric_current = parseFloat(document.getElementById('milestone-current-input')?.value) || 0;
+      data.goal_direction  = state.goalDirection;
       if (!data.numeric_target) { showToast('Enter a target value', 'error'); return; }
       break;
 

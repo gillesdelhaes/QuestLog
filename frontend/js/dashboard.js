@@ -112,15 +112,27 @@ function buildCounterBody(q) {
   `;
 }
 
+function calcNumericPct(q) {
+  if (!q.numeric_target) return 0;
+  if (q.goal_direction === 'below') {
+    const start = q.numeric_start ?? q.numeric_current;
+    const range = start - q.numeric_target;
+    if (range <= 0) return 0;
+    return Math.min(100, Math.max(0, Math.round((start - (q.numeric_current || 0)) / range * 100)));
+  }
+  return Math.min(100, Math.round((q.numeric_current || 0) / q.numeric_target * 100));
+}
+
 function buildBossBody(q) {
-  const pct = q.numeric_target ? Math.min(100, Math.round(((q.numeric_current || 0) / q.numeric_target) * 100)) : 0;
+  const pct  = calcNumericPct(q);
   const unit = q.unit || '';
+  const dir  = q.goal_direction === 'below' ? '📉' : '📈';
   const deadline = q.deadline ? `⚔️ By ${q.deadline}` : '';
   return `
     <div style="margin-bottom:0.5rem">
       <div class="xp-bar-wrap"><div class="xp-bar-fill" style="width:${pct}%"></div></div>
       <div style="display:flex;justify-content:space-between;font-size:0.75rem;margin-top:0.25rem">
-        <span class="text-teal">${q.numeric_current || 0} / ${q.numeric_target} ${unit}</span>
+        <span class="text-teal">${dir} ${q.numeric_current || 0} → ${q.numeric_target} ${unit}</span>
         <span class="text-dim">${pct}%</span>
       </div>
     </div>
@@ -129,13 +141,14 @@ function buildBossBody(q) {
 }
 
 function buildMilestoneBody(q) {
-  const pct = q.numeric_target ? Math.min(100, Math.round(((q.numeric_current || 0) / q.numeric_target) * 100)) : 0;
+  const pct  = calcNumericPct(q);
   const unit = q.unit || '';
+  const dir  = q.goal_direction === 'below' ? '📉' : '📈';
   return `
     <div style="margin-bottom:0.5rem">
       <div class="xp-bar-wrap"><div class="xp-bar-fill gold" style="width:${pct}%"></div></div>
       <div style="display:flex;justify-content:space-between;font-size:0.75rem;margin-top:0.25rem">
-        <span class="text-gold">${q.numeric_current || 0} / ${q.numeric_target} ${unit}</span>
+        <span class="text-gold">${dir} ${q.numeric_current || 0} → ${q.numeric_target} ${unit}</span>
         <span class="text-dim">${pct}%</span>
       </div>
     </div>

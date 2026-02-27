@@ -25,6 +25,11 @@ class FailureMode(str, Enum):
     freeze_lives = "freeze_lives"
 
 
+class GoalDirection(str, Enum):
+    above = "above"   # succeed when numeric_current >= numeric_target (default)
+    below = "below"   # succeed when numeric_current <= numeric_target (e.g. weight loss)
+
+
 # ── DB Tables ──────────────────────────────────────────────────────────────────
 
 class User(SQLModel, table=True):
@@ -53,6 +58,8 @@ class Quest(SQLModel, table=True):
     # Boss battle / milestone fields
     numeric_target: Optional[float] = None
     numeric_current: Optional[float] = None
+    numeric_start: Optional[float] = None     # captured at creation for below-direction progress %
+    goal_direction: Optional[GoalDirection] = GoalDirection.above
     deadline: Optional[date] = None
     # Weekly quota fields
     weekly_target: Optional[int] = None
@@ -108,6 +115,7 @@ class QuestCreate(SQLModel):
     unit: Optional[str] = None
     numeric_target: Optional[float] = None
     numeric_current: Optional[float] = None
+    goal_direction: Optional[GoalDirection] = GoalDirection.above
     deadline: Optional[date] = None
     weekly_target: Optional[int] = None
 
@@ -153,6 +161,8 @@ class QuestResponse(SQLModel):
     unit: Optional[str]
     numeric_target: Optional[float]
     numeric_current: Optional[float]
+    numeric_start: Optional[float]
+    goal_direction: Optional[GoalDirection]
     deadline: Optional[date]
     weekly_target: Optional[int]
     created_at: datetime

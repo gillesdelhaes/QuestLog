@@ -1,4 +1,5 @@
 import os
+from sqlalchemy import text
 from sqlmodel import create_engine, SQLModel, Session
 
 from .config import settings
@@ -21,6 +22,18 @@ engine = create_engine(
 
 def init_db():
     SQLModel.metadata.create_all(engine)
+    # Additive migrations for columns added after initial schema
+    _migrations = [
+        "ALTER TABLE quest ADD COLUMN goal_direction TEXT DEFAULT 'above'",
+        "ALTER TABLE quest ADD COLUMN numeric_start REAL",
+    ]
+    with engine.connect() as conn:
+        for stmt in _migrations:
+            try:
+                conn.execute(text(stmt))
+                conn.commit()
+            except Exception:
+                pass  # column already exists
 
 
 def get_session():
