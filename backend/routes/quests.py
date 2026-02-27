@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -346,6 +346,104 @@ def resume_quest(
 
     checkins = _get_checkins(quest_id, session)
     return _build_response(quest, checkins)
+
+
+@router.put("/{quest_id}/checkin/{checkin_date}", response_model=QuestDetailResponse)
+def edit_checkin(
+    quest_id: int,
+    checkin_date: date,
+    body: CheckInCreate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    quest = _get_quest_or_404(quest_id, current_user.id, session)
+
+    if quest.type not in (QuestType.streak, QuestType.counter):
+        raise HTTPException(status_code=400, detail="Only streak and counter quests support check-in editing")
+    if quest.status in (QuestStatus.completed, QuestStatus.failed):
+        raise HTTPException(status_code=400, detail="Quest is already finished")
+
+    today = date.today()
+    if checkin_date > today:
+        raise HTTPException(status_code=400, detail="Cannot edit a future date")
+    if checkin_date < today - timedelta(days=7):
+        raise HTTPException(status_code=400, detail="Can only edit check-ins within the last 7 days")
+
+    checkins = _get_checkins(quest_id, session)
+    existing = next((c for c in checkins if c.logged_at == checkin_date), None)
+
+    # Determine new success/value
+    if quest.type == QuestType.streak:
+        if body.success is None:
+            raise HTTPException(status_code=400, detail="success field required for streak quests")
+        new_success = body.success
+        new_value = None
+    else:  # counter
+        if body.value is None:
+            raise HTTPException(status_code=400, detail="value field required for counter quests")
+        new_value = body.value
+        new_success = new_value >= (quest.daily_target or 0)
+
+    if existing:
+        new_life_used = existing.life_used  # default: carry over
+        if existing.life_used and new_success:
+            # Was a life-costing failure → now success → restore 1 life
+            quest.lives_remaining = min(quest.lives_max or 0, (quest.lives_remaining or 0) + 1)
+            new_life_used = False
+            session.add(quest)
+            session.commit()
+        elif existing.success and not new_success:
+            # Was success → now failure → possibly deduct life
+            if quest.failure_mode == FailureMode.freeze_lives and (quest.lives_remaining or 0) > 0:
+                quest.lives_remaining -= 1
+                new_life_used = True
+                session.add(quest)
+                session.commit()
+            else:
+                new_life_used = False
+        existing.success = new_success
+        existing.value = new_value
+        existing.notes = body.notes
+        existing.life_used = new_life_used
+        session.add(existing)
+    else:
+        life_used = False
+        if not new_success and quest.failure_mode == FailureMode.freeze_lives:
+            if (quest.lives_remaining or 0) > 0:
+                quest.lives_remaining -= 1
+                life_used = True
+                session.add(quest)
+                session.commit()
+        record = CheckIn(
+            quest_id=quest_id,
+            user_id=current_user.id,
+            logged_at=checkin_date,
+            value=new_value,
+            success=new_success,
+            notes=body.notes,
+            life_used=life_used,
+        )
+        session.add(record)
+
+    session.commit()
+    checkins = _get_checkins(quest_id, session)
+    run_badge_engine(current_user.id, session)
+    session.refresh(quest)
+
+    base = _build_response(quest, checkins)
+    checkin_responses = [
+        CheckInResponse(
+            id=c.id,
+            quest_id=c.quest_id,
+            logged_at=c.logged_at,
+            value=c.value,
+            success=c.success,
+            notes=c.notes,
+            life_used=c.life_used,
+        )
+        for c in sorted(checkins, key=lambda c: c.logged_at, reverse=True)
+    ]
+    return QuestDetailResponse(**base.model_dump(), checkins=checkin_responses)
 
 
 @router.post("/{quest_id}/complete", response_model=QuestResponse)

@@ -56,9 +56,17 @@ function renderDetail(quest) {
     ${buildLog(quest)}
   `;
 
-  // Wire up delete
+  // Wire up delete / edit quest
   body.querySelector('#btn-delete-quest')?.addEventListener('click', () => confirmDelete(quest));
   body.querySelector('#btn-edit-quest')?.addEventListener('click', () => openEditModal(quest));
+
+  // Wire up retroactive check-in editing (heatmap cells + log row buttons)
+  body.querySelectorAll('[data-edit-date]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openEditCheckinModal(quest, el.dataset.editDate);
+    });
+  });
 }
 
 function buildStats(q) {
@@ -131,7 +139,12 @@ function buildHeatmap(q) {
       else if (c.success) { cls = 'success'; title += ' ✓'; }
       else { cls = 'failure'; title += ' ✗'; }
     }
-    cells.push(`<div class="heatmap-cell ${cls}" title="${title}"></div>`);
+    const editable = i <= 6;
+    if (editable) {
+      cells.push(`<button class="heatmap-cell ${cls} heatmap-editable" title="${title} — click to edit" data-edit-date="${key}"></button>`);
+    } else {
+      cells.push(`<div class="heatmap-cell ${cls}" title="${title}"></div>`);
+    }
   }
 
   return `
@@ -162,6 +175,12 @@ function buildLog(q) {
     return `<div class="section-title">Activity Log</div><p class="text-dim" style="font-size:0.85rem">No activity yet.</p>`;
   }
 
+  const todayStr = new Date().toISOString().split('T')[0];
+  const minEdit = new Date();
+  minEdit.setDate(minEdit.getDate() - 7);
+  const minEditStr = minEdit.toISOString().split('T')[0];
+  const canEdit = ['streak', 'counter'].includes(q.type);
+
   const rows = q.checkins.slice(0, 30).map(c => {
     let icon, cls;
     if (c.life_used)    { icon = '🛡️'; cls = 'ci-life'; }
@@ -170,12 +189,14 @@ function buildLog(q) {
 
     const value = c.value != null ? `${c.value}` : '';
     const notes = c.notes ? ` — ${escHtml(c.notes)}` : '';
+    const editable = canEdit && c.logged_at >= minEditStr && c.logged_at <= todayStr;
 
     return `<li class="checkin-item ${cls}">
       <span class="ci-date">${c.logged_at}</span>
       <span class="ci-icon"></span>
       <span style="font-size:0.8rem">${icon}${notes ? notes : ''}</span>
       ${value ? `<span class="ci-value">${value}</span>` : ''}
+      ${editable ? `<button class="btn-edit-ci" data-edit-date="${c.logged_at}" title="Edit this check-in">✏️</button>` : ''}
     </li>`;
   }).join('');
 
@@ -238,6 +259,68 @@ function openEditModal(quest) {
   };
 }
 
+// ── Edit Past Check-in Modal ───────────────────────────────────────────────
+function openEditCheckinModal(quest, dateStr) {
+  const overlay = document.getElementById('edit-checkin-modal');
+  const dateLabel = new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  overlay.querySelector('#edit-checkin-date').textContent = `Edit — ${dateLabel}`;
+
+  const streakFields  = overlay.querySelector('#edit-checkin-streak-fields');
+  const counterFields = overlay.querySelector('#edit-checkin-counter-fields');
+
+  if (quest.type === 'streak') {
+    streakFields.classList.remove('hidden');
+    counterFields.classList.add('hidden');
+  } else {
+    streakFields.classList.add('hidden');
+    counterFields.classList.remove('hidden');
+    const hint = quest.unit ? `Target: ${quest.daily_target} ${quest.unit}` : `Target: ${quest.daily_target}`;
+    overlay.querySelector('#edit-checkin-unit').textContent = hint;
+  }
+
+  // Pre-populate from existing check-in data
+  const existing = quest.checkins?.find(c => c.logged_at === dateStr);
+  const successInput = overlay.querySelector('#edit-checkin-success');
+  const doneBtn   = overlay.querySelector('#btn-checkin-done');
+  const missedBtn = overlay.querySelector('#btn-checkin-missed');
+
+  function setToggle(isSuccess) {
+    successInput.value = isSuccess ? 'true' : 'false';
+    doneBtn.className   = isSuccess ? 'btn btn-sm btn-success' : 'btn btn-sm btn-ghost';
+    missedBtn.className = isSuccess ? 'btn btn-sm btn-ghost'   : 'btn btn-sm btn-danger';
+  }
+
+  if (quest.type === 'streak') {
+    setToggle(existing ? existing.success : true);
+    doneBtn.onclick   = () => setToggle(true);
+    missedBtn.onclick = () => setToggle(false);
+  } else {
+    overlay.querySelector('#edit-checkin-value').value = existing?.value ?? '';
+  }
+  overlay.querySelector('#edit-checkin-notes').value = existing?.notes || '';
+
+  overlay.classList.remove('hidden');
+
+  overlay.querySelector('#edit-checkin-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const body = { notes: overlay.querySelector('#edit-checkin-notes').value.trim() || null };
+    if (quest.type === 'streak') {
+      body.success = successInput.value === 'true';
+    } else {
+      body.value = parseFloat(overlay.querySelector('#edit-checkin-value').value);
+    }
+    try {
+      await questsApi.editCheckin(quest.id, dateStr, body);
+      showToast('Check-in updated!', 'success');
+      overlay.classList.add('hidden');
+      openQuestDetail(quest.id);
+      renderDashboard('active');
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 function statusTag(s) {
   return { active: 'Active', completed: 'Victory!', failed: 'Defeated', paused: 'Paused' }[s] || s;
@@ -258,5 +341,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('btn-close-edit')?.addEventListener('click', () => {
     document.getElementById('edit-quest-modal').classList.add('hidden');
+  });
+
+  const closeEditCheckin = () => document.getElementById('edit-checkin-modal').classList.add('hidden');
+  document.getElementById('btn-close-edit-checkin')?.addEventListener('click', closeEditCheckin);
+  document.getElementById('btn-cancel-edit-checkin')?.addEventListener('click', closeEditCheckin);
+  document.getElementById('edit-checkin-modal')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeEditCheckin();
   });
 });

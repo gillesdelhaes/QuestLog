@@ -407,6 +407,14 @@
 .heatmap-cell.failure  { background: var(--red-dim);  border-color: var(--red-dim); }
 .heatmap-cell.life-used { background: var(--gold-dim); border-color: var(--gold-dim); }
 
+button.heatmap-cell {
+  padding: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+button.heatmap-editable:hover { opacity: 0.75; outline: 1px solid var(--gold); }
+
 /* ── Quest detail ────────────────────────────────────────────────────────── */
 .quest-detail-header {
   display: flex;
@@ -454,6 +462,18 @@
 .checkin-item .ci-date { color: var(--text-dim); font-size: 0.8rem; min-width: 90px; }
 .checkin-item .ci-icon { font-size: 1rem; }
 .checkin-item .ci-value { color: var(--text-dim); font-size: 0.8rem; margin-left: auto; }
+
+.btn-edit-ci {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.75rem;
+  opacity: 0.45;
+  padding: 0 0.15rem;
+  margin-left: auto;
+  transition: opacity 0.15s;
+}
+.btn-edit-ci:hover { opacity: 1; }
 .checkin-item.ci-success .ci-icon::before { content: '✅'; }
 .checkin-item.ci-failure .ci-icon::before { content: '❌'; }
 .checkin-item.ci-life .ci-icon::before    { content: '🛡️'; }

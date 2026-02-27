@@ -63,6 +63,7 @@ const quests = {
   update: (id, data)=> request('PUT',    `/api/quests/${id}`, data),
   delete: (id)      => request('DELETE', `/api/quests/${id}`),
   checkin:(id, data)=> request('POST',   `/api/quests/${id}/checkin`, data),
+  editCheckin: (id, date, data) => request('PUT', `/api/quests/${id}/checkin/${date}`, data),
   updateNumeric: (id, value, notes = null) =>
     request('POST', `/api/quests/${id}/update`, { value, notes }),
   pause:    (id)    => request('POST',   `/api/quests/${id}/pause`),
