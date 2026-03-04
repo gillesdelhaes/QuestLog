@@ -1,6 +1,6 @@
 /* ── QuestLog Service Worker — offline-capable static asset cache ─────────── */
 
-const CACHE_NAME = 'questlog-v1';
+const CACHE_NAME = 'questlog-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

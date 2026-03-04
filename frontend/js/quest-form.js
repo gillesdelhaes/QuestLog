@@ -162,7 +162,7 @@ function renderTypeConfig() {
         <div class="form-row">
           <div class="form-group">
             <label>${state.goalDirection === 'below' ? 'Goal Value' : 'Target Value'}</label>
-            <input type="number" id="boss-target-input" step="any" inputmode="decimal" placeholder="${state.goalDirection === 'below' ? 'e.g. 80' : 'e.g. 10'}" required>
+            <input type="text" id="boss-target-input" inputmode="decimal" placeholder="${state.goalDirection === 'below' ? 'e.g. 80' : 'e.g. 10'}" required>
           </div>
           <div class="form-group">
             <label>Unit</label>
@@ -172,7 +172,7 @@ function renderTypeConfig() {
         <div class="form-row">
           <div class="form-group">
             <label>${state.goalDirection === 'below' ? 'Starting Value' : 'Current Value'}</label>
-            <input type="number" id="boss-current-input" step="any" inputmode="decimal" placeholder="${state.goalDirection === 'below' ? 'e.g. 100' : '0'}" value="0">
+            <input type="text" id="boss-current-input" inputmode="decimal" placeholder="${state.goalDirection === 'below' ? 'e.g. 100' : '0'}" value="0">
           </div>
           <div class="form-group">
             <label>Deadline</label>
@@ -197,7 +197,7 @@ function renderTypeConfig() {
         <div class="form-row">
           <div class="form-group">
             <label>${state.goalDirection === 'below' ? 'Goal Value' : 'Target Value'}</label>
-            <input type="number" id="milestone-target-input" step="any" inputmode="decimal" placeholder="${state.goalDirection === 'below' ? 'e.g. 80' : 'e.g. 500'}" required>
+            <input type="text" id="milestone-target-input" inputmode="decimal" placeholder="${state.goalDirection === 'below' ? 'e.g. 80' : 'e.g. 500'}" required>
           </div>
           <div class="form-group">
             <label>Unit</label>
@@ -206,7 +206,7 @@ function renderTypeConfig() {
         </div>
         <div class="form-group">
           <label>${state.goalDirection === 'below' ? 'Starting Value' : 'Starting Value (optional)'}</label>
-          <input type="number" id="milestone-current-input" step="any" inputmode="decimal" placeholder="0" value="0">
+          <input type="text" id="milestone-current-input" inputmode="decimal" placeholder="0" value="0">
         </div>`;
       wireDirectionToggle(el);
       break;
@@ -329,9 +329,9 @@ async function submitQuest() {
       break;
 
     case 'boss_battle':
-      data.numeric_target  = parseFloat(document.getElementById('boss-target-input')?.value) || null;
+      data.numeric_target  = parseFloat((document.getElementById('boss-target-input')?.value || '').replace(',', '.')) || null;
       data.unit            = document.getElementById('boss-unit-input')?.value?.trim() || null;
-      data.numeric_current = parseFloat(document.getElementById('boss-current-input')?.value) || 0;
+      data.numeric_current = parseFloat((document.getElementById('boss-current-input')?.value || '').replace(',', '.')) || 0;
       data.deadline        = document.getElementById('boss-deadline-input')?.value || null;
       data.goal_direction  = state.goalDirection;
       if (!data.numeric_target) { showToast('Enter a target value', 'error'); return; }
@@ -339,9 +339,9 @@ async function submitQuest() {
       break;
 
     case 'milestone':
-      data.numeric_target  = parseFloat(document.getElementById('milestone-target-input')?.value) || null;
+      data.numeric_target  = parseFloat((document.getElementById('milestone-target-input')?.value || '').replace(',', '.')) || null;
       data.unit            = document.getElementById('milestone-unit-input')?.value?.trim() || null;
-      data.numeric_current = parseFloat(document.getElementById('milestone-current-input')?.value) || 0;
+      data.numeric_current = parseFloat((document.getElementById('milestone-current-input')?.value || '').replace(',', '.')) || 0;
       data.goal_direction  = state.goalDirection;
       if (!data.numeric_target) { showToast('Enter a target value', 'error'); return; }
       break;

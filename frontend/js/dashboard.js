@@ -352,7 +352,7 @@ function openNumericModal(questId, unit, current) {
 
   form.onsubmit = async (e) => {
     e.preventDefault();
-    const value = parseFloat(input.value);
+    const value = parseFloat(input.value.replace(',', '.'));
     if (isNaN(value)) return;
     try {
       await questsApi.updateNumeric(questId, value);

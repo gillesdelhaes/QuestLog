@@ -130,7 +130,7 @@ function bestStreakLabel(q) {
 
 function buildHeatmap(q) {
   if (!q.checkins?.length) return '';
-  if (!['streak', 'counter', 'weekly_quota'].includes(q.type)) return '';
+  if (!['streak', 'counter', 'weekly_quota', 'boss_battle', 'milestone'].includes(q.type)) return '';
 
   const today = new Date();
   const cells = [];
@@ -383,7 +383,7 @@ function openEditCheckinModal(quest, dateStr) {
     } else if (quest.type === 'weekly_quota') {
       body.count = parseInt(overlay.querySelector('#edit-checkin-count').value, 10) || 0;
     } else {
-      body.value = parseFloat(overlay.querySelector('#edit-checkin-value').value);
+      body.value = parseFloat(overlay.querySelector('#edit-checkin-value').value.replace(',', '.'));
     }
     try {
       await questsApi.editCheckin(quest.id, dateStr, body);

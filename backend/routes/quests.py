@@ -300,6 +300,18 @@ def update_numeric(
     session.add(quest)
     session.commit()
 
+    # Record each progress update as a check-in (for activity log)
+    session.add(CheckIn(
+        quest_id=quest_id,
+        user_id=current_user.id,
+        logged_at=date.today(),
+        value=body.value,
+        success=True,
+        notes=body.notes,
+        life_used=False,
+    ))
+    session.commit()
+
     # Auto-complete milestone when target reached
     cur2, tgt2 = (quest.numeric_current or 0), (quest.numeric_target or 0)
     reached2 = cur2 <= tgt2 if quest.goal_direction == GoalDirection.below else cur2 >= tgt2
@@ -314,7 +326,7 @@ def update_numeric(
 
     run_badge_engine(current_user.id, session)
     session.refresh(quest)
-    return _build_response(quest, [])
+    return _build_response(quest, _get_checkins(quest_id, session))
 
 
 @router.post("/{quest_id}/pause", response_model=QuestResponse)
