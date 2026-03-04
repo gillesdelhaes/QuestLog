@@ -130,13 +130,45 @@ function bestStreakLabel(q) {
 
 function buildHeatmap(q) {
   if (!q.checkins?.length) return '';
-  if (!['streak', 'counter'].includes(q.type)) return '';
+  if (!['streak', 'counter', 'weekly_quota'].includes(q.type)) return '';
+
+  const today = new Date();
+  const cells = [];
+
+  if (q.type === 'weekly_quota') {
+    // Aggregate check-ins by date (count per day)
+    const countByDate = {};
+    for (const c of q.checkins) {
+      countByDate[c.logged_at] = (countByDate[c.logged_at] || 0) + 1;
+    }
+    for (let i = 89; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const key = d.toISOString().split('T')[0];
+      const count = countByDate[key] || 0;
+      const cls = count > 0 ? 'success' : '';
+      const title = count > 0 ? `${key} ×${count}` : key;
+      const editable = i <= 6;
+      if (editable) {
+        cells.push(`<button class="heatmap-cell ${cls} heatmap-editable" title="${title} — click to edit" data-edit-date="${key}"></button>`);
+      } else {
+        cells.push(`<div class="heatmap-cell ${cls}" title="${title}"></div>`);
+      }
+    }
+    return `
+      <div style="margin-bottom:1.25rem">
+        <div class="section-title">Last 90 Days</div>
+        <div class="heatmap">${cells.join('')}</div>
+        <div style="display:flex;gap:1rem;font-size:0.7rem;color:var(--text-dim);margin-top:0.5rem">
+          <span><span style="color:var(--green)">■</span> Completed</span>
+          <span><span style="color:var(--text-dim)">■</span> None</span>
+        </div>
+      </div>`;
+  }
 
   const byDate = {};
   for (const c of q.checkins) byDate[c.logged_at] = c;
 
-  const today = new Date();
-  const cells = [];
   for (let i = 89; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
@@ -189,26 +221,49 @@ function buildLog(q) {
   const minEdit = new Date();
   minEdit.setDate(minEdit.getDate() - 7);
   const minEditStr = minEdit.toISOString().split('T')[0];
-  const canEdit = ['streak', 'counter'].includes(q.type);
+  const canEdit = ['streak', 'counter', 'weekly_quota'].includes(q.type);
 
-  const rows = q.checkins.slice(0, 30).map(c => {
-    let icon, cls;
-    if (c.life_used)    { icon = '🛡️'; cls = 'ci-life'; }
-    else if (c.success) { icon = '✅'; cls = 'ci-success'; }
-    else                { icon = '❌'; cls = 'ci-failure'; }
+  let rows;
+  if (q.type === 'weekly_quota') {
+    // Group check-ins by date and show per-day summary
+    const countByDate = {};
+    const notesByDate = {};
+    for (const c of q.checkins) {
+      countByDate[c.logged_at] = (countByDate[c.logged_at] || 0) + 1;
+      if (c.notes && !notesByDate[c.logged_at]) notesByDate[c.logged_at] = c.notes;
+    }
+    const dates = Object.keys(countByDate).sort().reverse().slice(0, 30);
+    rows = dates.map(dateStr => {
+      const count = countByDate[dateStr];
+      const notes = notesByDate[dateStr] ? ` — ${escHtml(notesByDate[dateStr])}` : '';
+      const editable = dateStr >= minEditStr && dateStr <= todayStr;
+      return `<li class="checkin-item ci-success">
+        <span class="ci-date">${dateStr}</span>
+        <span class="ci-icon"></span>
+        <span style="font-size:0.8rem">×${count}${notes}</span>
+        ${editable ? `<button class="btn-edit-ci" data-edit-date="${dateStr}" title="Edit this check-in">✏️</button>` : ''}
+      </li>`;
+    }).join('');
+  } else {
+    rows = q.checkins.slice(0, 30).map(c => {
+      let icon, cls;
+      if (c.life_used)    { icon = '🛡️'; cls = 'ci-life'; }
+      else if (c.success) { icon = '✅'; cls = 'ci-success'; }
+      else                { icon = '❌'; cls = 'ci-failure'; }
 
-    const value = c.value != null ? `${c.value}` : '';
-    const notes = c.notes ? ` — ${escHtml(c.notes)}` : '';
-    const editable = canEdit && c.logged_at >= minEditStr && c.logged_at <= todayStr;
+      const value = c.value != null ? `${c.value}` : '';
+      const notes = c.notes ? ` — ${escHtml(c.notes)}` : '';
+      const editable = canEdit && c.logged_at >= minEditStr && c.logged_at <= todayStr;
 
-    return `<li class="checkin-item ${cls}">
-      <span class="ci-date">${c.logged_at}</span>
-      <span class="ci-icon"></span>
-      <span style="font-size:0.8rem">${icon}${notes ? notes : ''}</span>
-      ${value ? `<span class="ci-value">${value}</span>` : ''}
-      ${editable ? `<button class="btn-edit-ci" data-edit-date="${c.logged_at}" title="Edit this check-in">✏️</button>` : ''}
-    </li>`;
-  }).join('');
+      return `<li class="checkin-item ${cls}">
+        <span class="ci-date">${c.logged_at}</span>
+        <span class="ci-icon"></span>
+        <span style="font-size:0.8rem">${icon}${notes ? notes : ''}</span>
+        ${value ? `<span class="ci-value">${value}</span>` : ''}
+        ${editable ? `<button class="btn-edit-ci" data-edit-date="${c.logged_at}" title="Edit this check-in">✏️</button>` : ''}
+      </li>`;
+    }).join('');
+  }
 
   return `
     <div class="section-title">Activity Log</div>
@@ -277,12 +332,18 @@ function openEditCheckinModal(quest, dateStr) {
 
   const streakFields  = overlay.querySelector('#edit-checkin-streak-fields');
   const counterFields = overlay.querySelector('#edit-checkin-counter-fields');
+  const quotaFields   = overlay.querySelector('#edit-checkin-quota-fields');
+
+  streakFields.classList.add('hidden');
+  counterFields.classList.add('hidden');
+  quotaFields.classList.add('hidden');
 
   if (quest.type === 'streak') {
     streakFields.classList.remove('hidden');
-    counterFields.classList.add('hidden');
+  } else if (quest.type === 'weekly_quota') {
+    quotaFields.classList.remove('hidden');
+    overlay.querySelector('#edit-checkin-quota-hint').textContent = `Target: ${quest.weekly_target}× per week`;
   } else {
-    streakFields.classList.add('hidden');
     counterFields.classList.remove('hidden');
     const hint = quest.unit ? `Target: ${quest.daily_target} ${quest.unit}` : `Target: ${quest.daily_target}`;
     overlay.querySelector('#edit-checkin-unit').textContent = hint;
@@ -304,6 +365,9 @@ function openEditCheckinModal(quest, dateStr) {
     setToggle(existing ? existing.success : true);
     doneBtn.onclick   = () => setToggle(true);
     missedBtn.onclick = () => setToggle(false);
+  } else if (quest.type === 'weekly_quota') {
+    const countForDate = quest.checkins?.filter(c => c.logged_at === dateStr).length || 0;
+    overlay.querySelector('#edit-checkin-count').value = countForDate;
   } else {
     overlay.querySelector('#edit-checkin-value').value = existing?.value ?? '';
   }
@@ -316,6 +380,8 @@ function openEditCheckinModal(quest, dateStr) {
     const body = { notes: overlay.querySelector('#edit-checkin-notes').value.trim() || null };
     if (quest.type === 'streak') {
       body.success = successInput.value === 'true';
+    } else if (quest.type === 'weekly_quota') {
+      body.count = parseInt(overlay.querySelector('#edit-checkin-count').value, 10) || 0;
     } else {
       body.value = parseFloat(overlay.querySelector('#edit-checkin-value').value);
     }

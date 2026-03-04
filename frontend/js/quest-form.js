@@ -162,7 +162,7 @@ function renderTypeConfig() {
         <div class="form-row">
           <div class="form-group">
             <label>${state.goalDirection === 'below' ? 'Goal Value' : 'Target Value'}</label>
-            <input type="number" id="boss-target-input" step="any" placeholder="${state.goalDirection === 'below' ? 'e.g. 80' : 'e.g. 10'}" required>
+            <input type="number" id="boss-target-input" step="any" inputmode="decimal" placeholder="${state.goalDirection === 'below' ? 'e.g. 80' : 'e.g. 10'}" required>
           </div>
           <div class="form-group">
             <label>Unit</label>
@@ -172,7 +172,7 @@ function renderTypeConfig() {
         <div class="form-row">
           <div class="form-group">
             <label>${state.goalDirection === 'below' ? 'Starting Value' : 'Current Value'}</label>
-            <input type="number" id="boss-current-input" step="any" placeholder="${state.goalDirection === 'below' ? 'e.g. 100' : '0'}" value="0">
+            <input type="number" id="boss-current-input" step="any" inputmode="decimal" placeholder="${state.goalDirection === 'below' ? 'e.g. 100' : '0'}" value="0">
           </div>
           <div class="form-group">
             <label>Deadline</label>
@@ -197,7 +197,7 @@ function renderTypeConfig() {
         <div class="form-row">
           <div class="form-group">
             <label>${state.goalDirection === 'below' ? 'Goal Value' : 'Target Value'}</label>
-            <input type="number" id="milestone-target-input" step="any" placeholder="${state.goalDirection === 'below' ? 'e.g. 80' : 'e.g. 500'}" required>
+            <input type="number" id="milestone-target-input" step="any" inputmode="decimal" placeholder="${state.goalDirection === 'below' ? 'e.g. 80' : 'e.g. 500'}" required>
           </div>
           <div class="form-group">
             <label>Unit</label>
@@ -206,7 +206,7 @@ function renderTypeConfig() {
         </div>
         <div class="form-group">
           <label>${state.goalDirection === 'below' ? 'Starting Value' : 'Starting Value (optional)'}</label>
-          <input type="number" id="milestone-current-input" step="any" placeholder="0" value="0">
+          <input type="number" id="milestone-current-input" step="any" inputmode="decimal" placeholder="0" value="0">
         </div>`;
       wireDirectionToggle(el);
       break;

@@ -137,6 +137,7 @@ class QuestUpdate(SQLModel):
 class CheckInCreate(SQLModel):
     success: Optional[bool] = None      # for streak quests
     value: Optional[float] = None       # for counter quests
+    count: Optional[int] = None         # for weekly_quota edits (occurrences for a day)
     notes: Optional[str] = None
 
 

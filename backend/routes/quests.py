@@ -365,8 +365,8 @@ def edit_checkin(
 ):
     quest = _get_quest_or_404(quest_id, current_user.id, session)
 
-    if quest.type not in (QuestType.streak, QuestType.counter):
-        raise HTTPException(status_code=400, detail="Only streak and counter quests support check-in editing")
+    if quest.type not in (QuestType.streak, QuestType.counter, QuestType.weekly_quota):
+        raise HTTPException(status_code=400, detail="Only streak, counter, and weekly_quota quests support check-in editing")
     if quest.status in (QuestStatus.completed, QuestStatus.failed):
         raise HTTPException(status_code=400, detail="Quest is already finished")
 
@@ -377,60 +377,79 @@ def edit_checkin(
         raise HTTPException(status_code=400, detail="Can only edit check-ins within the last 7 days")
 
     checkins = _get_checkins(quest_id, session)
-    existing = next((c for c in checkins if c.logged_at == checkin_date), None)
 
-    # Determine new success/value
-    if quest.type == QuestType.streak:
-        if body.success is None:
-            raise HTTPException(status_code=400, detail="success field required for streak quests")
-        new_success = body.success
-        new_value = None
-    else:  # counter
-        if body.value is None:
-            raise HTTPException(status_code=400, detail="value field required for counter quests")
-        new_value = body.value
-        new_success = new_value >= (quest.daily_target or 0)
-
-    if existing:
-        new_life_used = existing.life_used  # default: carry over
-        if existing.life_used and new_success:
-            # Was a life-costing failure → now success → restore 1 life
-            quest.lives_remaining = min(quest.lives_max or 0, (quest.lives_remaining or 0) + 1)
-            new_life_used = False
-            session.add(quest)
-            session.commit()
-        elif existing.success and not new_success:
-            # Was success → now failure → possibly deduct life
-            if quest.failure_mode == FailureMode.freeze_lives and (quest.lives_remaining or 0) > 0:
-                quest.lives_remaining -= 1
-                new_life_used = True
-                session.add(quest)
-                session.commit()
-            else:
-                new_life_used = False
-        existing.success = new_success
-        existing.value = new_value
-        existing.notes = body.notes
-        existing.life_used = new_life_used
-        session.add(existing)
+    if quest.type == QuestType.weekly_quota:
+        # Delete all existing check-ins for this date and recreate `count` new ones
+        count = body.count if body.count is not None else 0
+        existing_for_date = [c for c in checkins if c.logged_at == checkin_date]
+        for c in existing_for_date:
+            session.delete(c)
+        session.commit()
+        for _ in range(count):
+            session.add(CheckIn(
+                quest_id=quest_id,
+                user_id=current_user.id,
+                logged_at=checkin_date,
+                value=None,
+                success=True,
+                notes=body.notes,
+                life_used=False,
+            ))
     else:
-        life_used = False
-        if not new_success and quest.failure_mode == FailureMode.freeze_lives:
-            if (quest.lives_remaining or 0) > 0:
-                quest.lives_remaining -= 1
-                life_used = True
+        existing = next((c for c in checkins if c.logged_at == checkin_date), None)
+
+        # Determine new success/value
+        if quest.type == QuestType.streak:
+            if body.success is None:
+                raise HTTPException(status_code=400, detail="success field required for streak quests")
+            new_success = body.success
+            new_value = None
+        else:  # counter
+            if body.value is None:
+                raise HTTPException(status_code=400, detail="value field required for counter quests")
+            new_value = body.value
+            new_success = new_value >= (quest.daily_target or 0)
+
+        if existing:
+            new_life_used = existing.life_used  # default: carry over
+            if existing.life_used and new_success:
+                # Was a life-costing failure → now success → restore 1 life
+                quest.lives_remaining = min(quest.lives_max or 0, (quest.lives_remaining or 0) + 1)
+                new_life_used = False
                 session.add(quest)
                 session.commit()
-        record = CheckIn(
-            quest_id=quest_id,
-            user_id=current_user.id,
-            logged_at=checkin_date,
-            value=new_value,
-            success=new_success,
-            notes=body.notes,
-            life_used=life_used,
-        )
-        session.add(record)
+            elif existing.success and not new_success:
+                # Was success → now failure → possibly deduct life
+                if quest.failure_mode == FailureMode.freeze_lives and (quest.lives_remaining or 0) > 0:
+                    quest.lives_remaining -= 1
+                    new_life_used = True
+                    session.add(quest)
+                    session.commit()
+                else:
+                    new_life_used = False
+            existing.success = new_success
+            existing.value = new_value
+            existing.notes = body.notes
+            existing.life_used = new_life_used
+            session.add(existing)
+        else:
+            life_used = False
+            if not new_success and quest.failure_mode == FailureMode.freeze_lives:
+                if (quest.lives_remaining or 0) > 0:
+                    quest.lives_remaining -= 1
+                    life_used = True
+                    session.add(quest)
+                    session.commit()
+            record = CheckIn(
+                quest_id=quest_id,
+                user_id=current_user.id,
+                logged_at=checkin_date,
+                value=new_value,
+                success=new_success,
+                notes=body.notes,
+                life_used=life_used,
+            )
+            session.add(record)
 
     session.commit()
     checkins = _get_checkins(quest_id, session)
