@@ -53,6 +53,9 @@ const auth = {
     request('POST', '/api/auth/login', { username, password }),
 
   me: () => request('GET', '/api/auth/me'),
+
+  changePassword: (currentPassword, newPassword) =>
+    request('POST', '/api/auth/change-password', { current_password: currentPassword, new_password: newPassword }),
 };
 
 // ── Quests ─────────────────────────────────────────────────────────────────

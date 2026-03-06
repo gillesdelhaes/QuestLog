@@ -92,6 +92,11 @@ class UserCreate(SQLModel):
     password: str
 
 
+class ChangePasswordRequest(SQLModel):
+    current_password: str
+    new_password: str
+
+
 class TokenResponse(SQLModel):
     access_token: str
     token_type: str = "bearer"

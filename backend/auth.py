@@ -8,7 +8,7 @@ from sqlmodel import Session, select
 
 from .config import settings
 from .database import get_session
-from .models import TokenResponse, User, UserCreate, UserResponse
+from .models import ChangePasswordRequest, TokenResponse, User, UserCreate, UserResponse
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -83,3 +83,22 @@ def login(body: UserCreate, session: Session = Depends(get_session)):
 @router.get("/me", response_model=UserResponse)
 def me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@router.post("/change-password", status_code=200)
+def change_password(
+    body: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    if not verify_password(body.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    if len(body.new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    if body.new_password == body.current_password:
+        raise HTTPException(status_code=400, detail="New password must be different from current password")
+
+    current_user.hashed_password = hash_password(body.new_password)
+    session.add(current_user)
+    session.commit()
+    return {"message": "Password updated successfully"}
