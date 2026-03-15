@@ -70,6 +70,11 @@ def get_weekly_quota_streak(quest: Quest, checkins: list[CheckIn]) -> int:
         return 0
 
     origin = quest.created_at.date()
+    # If the user backfilled entries before the quest creation date, anchor to the earliest entry
+    if checkins:
+        earliest = min(c.logged_at for c in checkins)
+        if earliest < origin:
+            origin = earliest
     today = date.today()
     days_elapsed = (today - origin).days
     completed_periods = days_elapsed // 7
@@ -91,18 +96,13 @@ def get_weekly_quota_streak(quest: Quest, checkins: list[CheckIn]) -> int:
 
 
 def get_current_week_count(quest: Quest, checkins: list[CheckIn]) -> int:
-    """Count check-ins in the current (possibly incomplete) 7-day window."""
+    """Count check-ins in the last 7 calendar days (rolling window from today)."""
     if quest.type != QuestType.weekly_quota:
         return 0
 
-    origin = quest.created_at.date()
     today = date.today()
-    days_elapsed = (today - origin).days
-    current_period = days_elapsed // 7
-    period_start = origin + timedelta(days=current_period * 7)
-    period_end = origin + timedelta(days=current_period * 7 + 6)
-
-    return sum(1 for c in checkins if period_start <= c.logged_at <= period_end)
+    week_start = today - timedelta(days=6)
+    return sum(1 for c in checkins if week_start <= c.logged_at <= today)
 
 
 def is_today_checked(checkins: list[CheckIn]) -> bool:

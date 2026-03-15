@@ -141,6 +141,13 @@ function buildHeatmap(q) {
     for (const c of q.checkins) {
       countByDate[c.logged_at] = (countByDate[c.logged_at] || 0) + 1;
     }
+    // Calculate period boundaries anchored to quest creation date
+    const origin = new Date(q.created_at + (q.created_at.includes('T') ? '' : 'T00:00:00'));
+    const originDate = new Date(origin.getFullYear(), origin.getMonth(), origin.getDate());
+    const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const msDiff = todayDate - originDate;
+    const daysSinceOrigin = Math.floor(msDiff / 86400000);
+
     for (let i = 89; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(today.getDate() - i);
@@ -148,11 +155,15 @@ function buildHeatmap(q) {
       const count = countByDate[key] || 0;
       const cls = count > 0 ? 'success' : '';
       const title = count > 0 ? `${key} ×${count}` : key;
-      const editable = i <= 6;
+      const editable = i <= 89;
+      // Mark the first day of each 7-day period (except the very first cell)
+      const dayOffset = daysSinceOrigin - i;
+      const isPeriodStart = dayOffset > 0 && dayOffset % 7 === 0;
+      const periodCls = isPeriodStart ? ' period-start' : '';
       if (editable) {
-        cells.push(`<button class="heatmap-cell ${cls} heatmap-editable" title="${title} — click to edit" data-edit-date="${key}"></button>`);
+        cells.push(`<button class="heatmap-cell ${cls}${periodCls} heatmap-editable" title="${title} — click to edit" data-edit-date="${key}"></button>`);
       } else {
-        cells.push(`<div class="heatmap-cell ${cls}" title="${title}"></div>`);
+        cells.push(`<div class="heatmap-cell ${cls}${periodCls}" title="${title}"></div>`);
       }
     }
     return `
@@ -162,6 +173,7 @@ function buildHeatmap(q) {
         <div style="display:flex;gap:1rem;font-size:0.7rem;color:var(--text-dim);margin-top:0.5rem">
           <span><span style="color:var(--green)">■</span> Completed</span>
           <span><span style="color:var(--text-dim)">■</span> None</span>
+          <span style="border-left:2px solid var(--text-dim);padding-left:4px">│ = week boundary</span>
         </div>
       </div>`;
   }
@@ -181,7 +193,7 @@ function buildHeatmap(q) {
       else if (c.success) { cls = 'success'; title += ' ✓'; }
       else { cls = 'failure'; title += ' ✗'; }
     }
-    const editable = i <= 6;
+    const editable = i <= 89;
     if (editable) {
       cells.push(`<button class="heatmap-cell ${cls} heatmap-editable" title="${title} — click to edit" data-edit-date="${key}"></button>`);
     } else {

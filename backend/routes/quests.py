@@ -385,8 +385,8 @@ def edit_checkin(
     today = date.today()
     if checkin_date > today:
         raise HTTPException(status_code=400, detail="Cannot edit a future date")
-    if checkin_date < today - timedelta(days=7):
-        raise HTTPException(status_code=400, detail="Can only edit check-ins within the last 7 days")
+    if checkin_date < today - timedelta(days=90):
+        raise HTTPException(status_code=400, detail="Can only edit check-ins within the last 90 days")
 
     checkins = _get_checkins(quest_id, session)
 

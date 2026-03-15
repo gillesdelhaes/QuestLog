@@ -415,6 +415,8 @@ button.heatmap-cell {
 }
 button.heatmap-editable:hover { opacity: 0.75; outline: 1px solid var(--gold); }
 
+.heatmap-cell.period-start { margin-left: 6px; }
+
 /* ── Quest detail ────────────────────────────────────────────────────────── */
 .quest-detail-header {
   display: flex;
